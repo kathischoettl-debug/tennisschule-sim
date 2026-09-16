@@ -53,7 +53,8 @@ col1, col2, col3 = st.columns(3)
 
 with col1:
     st.write("#### 1. Kursstruktur & Einteilung")
-    gruppengroesse = st.slider("Ziel-Gruppengröße", 1, 5, 3, help="Kleine Gruppen = Hohe Qualität, aber extrem hoher Koordinationsaufwand & Ausfallrisiko!")
+    gruppengroesse = st.slider("Ziel-Gruppengröße", 1, 5, 3, help="Kleine Gruppen = Hohe Qualität, aber hoher Koordinationsaufwand!")
+    leistung_anteil = st.slider("Anteil Leistungssport (%)", 0, 50, 15, help="Hoher Leistungssport fördert das Image, blockiert aber Kapazitäten.")
     einteilungs_fokus = st.select_slider("Einteilungs-Sorgfalt", options=["Pragmatisch (Wenig Aufwand)", "Mittel", "Perfekt Homogen (Hohe Kosten)"])
     preis_stunde = st.slider("Preis pro Schüler/Stunde (€)", 15, 60, 30)
 
@@ -73,7 +74,7 @@ with col3:
     if has_besaitung and not st.session_state.has_bespannmaschine:
         st.warning("⚠️ Erstinvestition: Professionelle Besaitungsmaschine kostet einmalig **1.800 €**.")
 
-# --- SIMULATION BEFEHL ---
+# --- SIMULATION BERECHNEN ---
 if st.button(f"⏩ Jahr {st.session_state.runde} simulieren"):
     
     investitionen = 0
@@ -81,34 +82,38 @@ if st.button(f"⏩ Jahr {st.session_state.runde} simulieren"):
         investitionen += 1800
         st.session_state.has_bespannmaschine = True
 
-    # 1. KOORDINATION & EINZELEFFEKT
+    # 1. KOORDINATION & IMAGE-EFFEKT
     koordinations_kosten = 500
     if einteilungs_fokus == "Perfekt Homogen (Hohe Kosten)":
-        koordinations_kosten = 2500  # Hoher zeitlicher / organisatorischer Aufwand
+        koordinations_kosten = 2500
         homogenitaets_bonus = 15
     elif einteilungs_fokus == "Mittel":
         koordinations_kosten = 1200
         homogenitaets_bonus = 5
     else:
-        homogenitaets_bonus = -10  # Unzufriedenheit durch bunt gemischte Gruppen
+        homogenitaets_bonus = -10
+        
+    # Image steigt durch Leistungssport
+    image_zuwachs = (leistung_anteil * 0.3)
+    st.session_state.image_score = int(min(100, st.session_state.image_score + image_zuwachs))
         
     # 2. QUALITÄT & ZUFRIEDENHEIT
     homogenitaets_abzug = (gruppengroesse - 2) * 8
     qualitaets_abzug = (anteil_nachwuchs / 100) * 20
     
     zufriedenheit = 100 - homogenitaets_abzug - qualitaets_abzug + homogenitaets_bonus
-    if has_shop: zufriedenheit += 5  # Shop wird als Service empfunden
+    if has_shop: zufriedenheit += 5
     zufriedenheit = max(10, min(100, zufriedenheit))
     
-    # 3. SHOP & RISIKO (Ladenhüter / Vororder)
+    # 3. SHOP & RISIKO
     shop_einnahmen = 0
     shop_kosten = 0
     if has_shop:
         verkaufs_quote = min(1.0, (st.session_state.kundenstamm / 150) * (zufriedenheit / 80))
-        if st.session_state.runde == 4: verkaufs_quote *= 0.6  # Kollektionswechsel-Schock!
+        if st.session_state.runde == 4: verkaufs_quote *= 0.6
         
         shop_einnahmen = vororder_volumen * 1.4 * verkaufs_quote
-        shop_kosten = vororder_volumen + 1200  # Miete/Lager
+        shop_kosten = vororder_volumen + 1200
         
     # 4. FINANZBERECHNUNG
     stunden_pro_schueler = 30
